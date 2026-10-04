@@ -1,0 +1,32 @@
+[
+  {
+    "id": "INC-001",
+    "diagnosis": "The payments service\u2019s connection pool became exhausted because the upstream database was saturated, with CPU at 92\u202f% due to a sudden surge of long\u2011running queries (or a query plan regression). This DB overload prevented new connections from being established, causing the service\u2019s request latency to climb to 4.2\u202fs. No code changes were involved; the root cause is the database resource exhaustion throttling the service\u2019s connection pool.",
+    "proposed_fix": "Add the missing index (or correct the query plan) on the column(s) used by the long\u2011running query to reduce CPU load and free DB connections.",
+    "confidence": 0.78
+  },
+  {
+    "id": "INC-002",
+    "diagnosis": "The new TLS certificate introduced a different signing key that the auth\u2011service began using for JWT generation, but the verification component (or downstream services) still trusted the previous public key. This key mismatch caused JWT signature verification to fail, resulting in 500 errors for the affected requests. The root cause is an incomplete key rotation\u2014deployment of the new certificate without updating all verification points.",
+    "proposed_fix": "Deploy the updated public key (or JWKS endpoint) containing the new signing key to all JWT verification components and restart/reload those services to pick up the change.",
+    "confidence": 0.93
+  },
+  {
+    "id": "INC-003",
+    "diagnosis": "The memory leak is caused by the newly deployed caching logic, which creates an unbounded in\u2011memory cache without proper eviction or TTL policies. Each request adds entries that are never removed, leading to a steady 2\u202f%/min increase in RAM usage despite unchanged traffic. This unchecked cache growth is the primary driver of the 89\u202f% memory utilization.",
+    "proposed_fix": "Implement a bounded cache with a size limit and TTL/eviction policy (e.g., LRU) and redeploy the service, clearing the existing in\u2011memory cache.",
+    "confidence": 0.93
+  },
+  {
+    "id": "INC-004",
+    "diagnosis": "The workers entered CrashLoopBackOff after a recent deployment introduced a runtime failure (e.g., an unhandled exception caused by a missing environment variable/invalid configuration), causing the containers to repeatedly exit and be restarted. Because the pods never stay healthy, they stop consuming from the `notification\u2011worker` queue, leading to the backlog of ~45\u202fk messages. The root cause is the faulty code/configuration change that triggers the pod crashes.",
+    "proposed_fix": "Roll back the recent deployment (or update the container image) to restore the missing/incorrect environment variable or configuration causing the unhandled exception, then redeploy the workers.",
+    "confidence": 0.93
+  },
+  {
+    "id": "INC-005",
+    "diagnosis": "The cluster entered a RED state because a network partition / node failure caused two of the three data nodes to become unreachable, leaving the majority of primary shards unassigned. With no active primary shards for the indexed indices, Elasticsearch cannot serve any search results, so the search\u2011service returns empty responses for all queries. The root cause is the loss of quorum on the data nodes, likely due to a network outage or hardware failure on those nodes.",
+    "proposed_fix": "Restore quorum by restarting the failed data nodes (or adding a replacement data node) so that at least two data nodes are online, then allow Elasticsearch to reallocate primary shards.",
+    "confidence": 0.86
+  }
+]
